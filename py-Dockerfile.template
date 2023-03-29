@@ -1,0 +1,12 @@
+FROM ${DOCKER_BASE_IMAGE}
+LABEL "version"="${DOCKER_IMAGE}-${DOCKER_IMAGE_VERSION}"
+LABEL "description"="Custom python docker image for DS Kubernetes cronjobs"
+
+USER root
+RUN mkdir /etc/kerberos
+ADD archive.tar.gz /home/${SA_USER}
+RUN touch /home/${SA_USER}/.pyexasol.ini
+RUN bash -c "if [[ -s /home/${SA_USER}/requirements.txt ]]; then pip install --trusted-host nexus.example.com -r /home/${SA_USER}/requirements.txt; fi"
+VOLUME /data /etc/kerberos/config /etc/kerberos/keytabs /crypto
+WORKDIR /home/${SA_USER}
+

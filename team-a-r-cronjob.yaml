@@ -1,0 +1,130 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ${JOBNAME}
+  labels:
+    team: ${GITREPO}
+    script: ${SCRIPT}
+spec:
+  schedule: "${CRONJOB_SCHEDULE}"
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          name: ${JOBNAME}
+          labels:
+            team: ${GITREPO}
+            script: ${SCRIPT}
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: ${DOCKER_IMAGE}
+            image: ${DOCKER_SERVER}/repository/${DOCKER_REPO}/${DOCKER_IMAGE}:${DOCKER_IMAGE_VERSION}
+            resources:
+              limits:
+                cpu: ${MAX_CPU}
+                memory: ${MAX_RAM}
+                ephemeral-storage: "100Mi"
+              requests:
+                cpu: ${MIN_CPU}
+                memory: ${MIN_RAM}
+                ephemeral-storage: "100Mi"
+            env:
+              - name: JOB_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.name
+              - name: ENVIRON
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.namespace
+              - name: USERNAME
+                valueFrom:
+                  secretKeyRef:
+                    name: ${GITREPO}-user
+                    key: username
+              - name: PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: ${GITREPO}-user
+                    key: password
+            args:
+            -  /home/${SA_USER}/main.sh
+            volumeMounts:
+            - mountPath: /etc/sssd/sssd.conf
+              name: sssd-conf
+              subPath: sssd.conf
+              readOnly: true
+            - mountPath: /etc/pam.d/runuser
+              name: etc-pam-d-sssd-runuser
+              subPath: runuser
+              readOnly: true
+            - mountPath: /etc/ssl/certs/ldap-ca.crt
+              name: internal-root-ca
+              subPath: internal-root-ca.crt
+              readOnly: true
+            - mountPath: /oracle/network/admin/tnsnames.ora
+              name: tnsnames-ora
+              subPath: tnsnames.ora
+              readOnly: true
+            - mountPath: /etc/odbcinst.ini
+              name: odbcinst-ini
+              subPath: odbcinst.ini
+              readOnly: true
+            - mountPath: /etc/odbc.ini
+              name: odbc-ini
+              subPath: odbc.ini
+              readOnly: true
+            - mountPath: /opt/cloudera/hiveodbc/lib/64/cloudera.hiveodbc.ini
+              name: cloudera-hiveodbc-ini
+              subPath: cloudera.hiveodbc.ini
+              readOnly: true
+            - mountPath: /data
+              name: storage
+            - mountPath: /crypto
+              name: crypto
+            - mountPath: /sftp
+              name: sftp
+#          securityContext:
+#            runAsGroup: ${USERS_GID}
+#            runAsUser: ${SA_UID}
+          volumes:
+          - secret:
+              secretName: sssd-conf
+              defaultMode: 0600
+            name: sssd-conf
+          - configMap:
+              name: etc-pam-d-sssd-runuser
+            name: etc-pam-d-sssd-runuser
+          - configMap:
+              name: internal-root-ca-g1
+            name: internal-root-ca-g1
+          - name: storage
+            nfs:
+              server: 10.1.1.10
+              path: /data
+          - name: sftp
+            nfs:
+              server: 10.1.1.11
+              path: /sftp
+          - name: crypto
+            nfs:
+              server: 10.1.1.12
+              path: /data2
+          - configMap:
+              name: tnsnames-ora
+            name: tnsnames-ora
+          - configMap:
+              name: r-odbcinst-ini-7
+            name: odbcinst-ini
+          - configMap:
+              name: r-odbc-ini-7
+            name: odbc-ini
+          - configMap:
+              name: cloudera-hiveodbc-ini
+            name: cloudera-hiveodbc-ini
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+---

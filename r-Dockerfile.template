@@ -1,0 +1,12 @@
+FROM ${DOCKER_BASE_IMAGE}
+LABEL "version"="${DOCKER_IMAGE}-${DOCKER_IMAGE_VERSION}"
+LABEL "description"="Custom R docker image for DS Kubernetes cronjobs"
+
+USER root
+RUN R -e "update.packages(repos='https://repo-r.example.com/repository/r-proxy-cran', ask = FALSE); if (\"${R_LIBRARIES}\" != \"''\") { install.packages(c(${R_LIBRARIES}), repos=c('https://repo-r.example.com/repository/r-proxy-cran','https://cran.microsoft.com'), clean = TRUE) }"
+RUN R -e "if (\"${R_LIBRARIES}\" != \"''\") { install.packages(c(${R_LIBRARIES}), repos=c('https://repo-r.example.com/repository/r-proxy-cran','https://cran.microsoft.com'), clean = TRUE) }"
+RUN mkdir /home/${SA_USER}
+ADD archive.tar.gz /home/${SA_USER}/
+VOLUME /data /crypto /sftp
+WORKDIR /home/${SA_USER}
+

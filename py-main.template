@@ -1,0 +1,37 @@
+#!/bin/bash
+export LANG="en_US.UTF-8"
+sssd -d 0x003 --logger=stderr
+sleep 15s
+echo "LANG='en_US.UTF-8' python /home/${SA_USER}/${MAIN_SCRIPT} >> /home/${SA_USER}/output.txt 2>&1" | tee /home/${SA_USER}/output.txt
+for f in `ls -A /home/${SA_USER}`; do
+  if [[ "${f}" != ".pyexasol" ]]; then
+    chown -R ${SA_USER}:${SA_GROUP} "/home/${SA_USER}/${f}" 2>&1 | tee -a /home/${SA_USER}/output.txt
+  fi
+done
+chown ${SA_USER}:${SA_GROUP} /home/${SA_USER} 2>&1 | tee -a /home/${SA_USER}/output.txt
+runuser -g ${SA_GROUP} ${SA_USER} -c "LANG='en_US.UTF-8' python /home/${SA_USER}/${MAIN_SCRIPT} 2>&1" | tee -a /home/${SA_USER}/output.txt
+EXITCODE=${PIPESTATUS[0]}
+if (($EXITCODE == 0)); then
+  RESULT="succeeded"
+elif (($EXITCODE == 99)); then
+  RESULT="warning"
+else
+  RESULT="failed"
+fi
+if [[ "${EMAIL_TO}" != "" ]]; then
+  echo -e "Hi, attached is the output of your python cronjob execution" |  mail -S smtp=gateway.example.com -s "${PROJECT} ${RESULT}" -a /home/${SA_USER}/output.txt -b ${EMAIL_BCC} ${EMAIL_FROM} ${EMAIL_CC} ${EMAIL_TO}
+fi
+if [[ -f /home/${SA_USER}/output.txt ]]; then cat /home/${SA_USER}/output.txt; fi
+sleep 15s
+case "${RESULT}" in
+"succeeded")
+  exit 0
+  ;;
+"warning")
+  exit 0
+  ;;
+"failed")
+  exit 1
+  ;;
+esac
+
